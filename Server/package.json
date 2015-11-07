@@ -1,0 +1,14 @@
+{
+  "name": "BLEChat-Server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "multer": "~0.1.8",
+    "debug": "~2.1.1",
+    "express": "~4.12.2",
+    "morgan": "~1.5.1"
+  }
+}
