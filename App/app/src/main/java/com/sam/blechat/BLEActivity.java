@@ -2,21 +2,24 @@ package com.sam.blechat;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.le.AdvertiseData;
-import android.bluetooth.le.AdvertiseSettings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
 
+import java.util.List;
 
-public class BLE extends Activity {
+public class BLEActivity extends Activity {
 
-    private static final String TAG = "BLE";
+    private static final String TAG = "BLEActivity";
     private static final int REQUEST_ENABLE_BT = 1;
 
     /*
@@ -35,14 +38,14 @@ public class BLE extends Activity {
         mApplication = (BLEApplication) getApplication();
         mApplication.setChatScreenActivity(this);
         //if (!mBluetoothAdapter.isMultipleAdvertisementSupported()) {
-        //    Log.e(TAG, "BLE Advertisement not supported");
+        //    Log.e(TAG, "BLEActivity Advertisement not supported");
         //    return;
         //}
 
         /*
         mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
         if (mBluetoothLeAdvertiser == null) {
-            Log.e(TAG, "Error getting BLE Advertiser");
+            Log.e(TAG, "Error getting BLEActivity Advertiser");
             return;
         }
 
@@ -62,23 +65,40 @@ public class BLE extends Activity {
 
         mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
         */
+        guiRefresh();
+    }
+
+    private void guiLoadMessages(List<BLEMessage> messages) {
+        ChatAdapter adapter = new ChatAdapter(this, messages);
+        ListView container = (ListView) findViewById(R.id.msg_list);
+        container.setAdapter(adapter);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
+        guiRefresh();
+
+    }
+
+    public void guiRefresh() {
+        List<BLEMessage> messages = mApplication.getMessages();
+        guiLoadMessages(messages);
+
+        guiHideEnableBLE();
+        guiHideBLENotSupported();
+        guiHideInternetError();
+
         if (!mApplication.isBluetoothSupported()) {
             guiShowBLENotSupported();
-            return;
-        }
-
-        if (!mApplication.isBluetoothEnabled()) {
+        } else if (!mApplication.isBluetoothEnabled()) {
             guiShowEnableBLE();
-            return;
         }
 
-
+        if (!mApplication.isNetworkAvailable()) {
+            guiShowInternetError();
+        }
     }
 
     /*
@@ -86,14 +106,14 @@ public class BLE extends Activity {
         @Override
         public void onStartSuccess(AdvertiseSettings settingsInEffect) {
             super.onStartSuccess(settingsInEffect);
-            Log.d(TAG, "BLE advertisement started");
+            Log.d(TAG, "BLEActivity advertisement started");
 
             mBluetoothAdapter.startDiscovery();
         }
 
         @Override
         public void onStartFailure(int errorCode) {
-            Log.e(TAG, String.format("BLE advertisement failed %d", errorCode));
+            Log.e(TAG, String.format("BLEActivity advertisement failed %d", errorCode));
         }
 
     };*/
@@ -103,9 +123,9 @@ public class BLE extends Activity {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
-                Log.d(TAG, "BLE Discovery started");
+                Log.d(TAG, "BLEActivity Discovery started");
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-                Log.d(TAG, "BLE Discovery finished");
+                Log.d(TAG, "BLEActivity Discovery finished");
             } else {
                 Log.d(TAG, String.format("Unknown intent %s", action));
             }
@@ -128,6 +148,7 @@ public class BLE extends Activity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            startActivity(new Intent(this, BLESettingsActivity.class));
             return true;
         }
 
@@ -141,7 +162,7 @@ public class BLE extends Activity {
             switch (resultCode) {
                 case Activity.RESULT_CANCELED: return;
                 default:
-                    guiHideEnableBLE();
+                    guiRefresh();
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -169,11 +190,43 @@ public class BLE extends Activity {
     }
 
     private void guiShowBLENotSupported() {
+        View errorPane = findViewById(R.id.ble_not_supported_pane);
+        errorPane.setVisibility(View.VISIBLE);
+    }
 
+    private void guiHideBLENotSupported() {
+        View errorPane = findViewById(R.id.ble_not_supported_pane);
+        errorPane.setVisibility(View.GONE);
     }
 
     public void guiClickEnableBLE(View v) {
         requestEnableBLE();
+    }
+
+    private void guiShowInternetError() {
+        View errorPane = findViewById(R.id.internet_error_pane);
+        errorPane.setVisibility(View.VISIBLE);
+    }
+
+    private void guiHideInternetError() {
+        View errorPane = findViewById(R.id.internet_error_pane);
+        errorPane.setVisibility(View.GONE);
+    }
+
+    public void guiClickSend(View v) {
+        EditText edit = (EditText) findViewById(R.id.msg_edit);
+        String text = edit.getText().toString();
+        if (TextUtils.isEmpty(text)) {
+            return;
+        }
+
+        if (!mApplication.sendMessage(text)) {
+            Toast.makeText(this, "Couldn't send message", Toast.LENGTH_SHORT).show();
+        } else {
+            edit.setText("");
+        }
+
+        guiRefresh();
     }
 
 }

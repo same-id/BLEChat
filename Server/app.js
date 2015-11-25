@@ -10,11 +10,20 @@ app.use(multer());
 var messages = {};
 
 app.put('/message/:msg_id', function (req, res) {
-  var msg_id = req.params.msg_id;
-  var msg = req.body.msg;
 
   console.log("here");
   console.log(req.body);
+
+  var msg_id = req.params.msg_id;
+  
+  if (!req.body.msg) {
+    console.log("No msg field")
+    res.sendStatus(500);
+    return;
+  }
+  var msg = new Buffer(req.body.msg, 'base64');
+
+  console.log(msg)
 
   if (messages[msg_id]) {
     res.sendStatus(500);

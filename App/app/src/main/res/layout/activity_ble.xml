@@ -1,6 +1,9 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".BLE">
@@ -19,6 +22,8 @@
             android:layout_height="wrap_content"
             android:background="#FF8080"
             android:visibility="gone"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
             />
         <TextView
             android:id="@+id/ble_disabled_pane"
@@ -29,6 +34,8 @@
             android:background="#FF8080"
             android:onClick="guiClickEnableBLE"
             android:visibility="gone"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
             />
         <TextView
             android:id="@+id/internet_error_pane"
@@ -37,16 +44,45 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#FF8080"
-            android:visibility="visible"
+            android:visibility="gone"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
             />
 
     </LinearLayout>
 
-    <TextView
-        android:text="@string/hello_world"
+    <ListView
+        android:id="@+id/msg_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/error_pane"
+        android:layout_above="@+id/msg_edit"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp"
+        android:listSelector="@android:color/transparent"
+        android:transcriptMode="alwaysScroll"
+        android:stackFromBottom="true"
+        android:divider="@null"
+        />
+
+    <EditText
+        android:id="@+id/msg_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toStartOf="@+id/msg_send_button"
+        android:inputType="textAutoCorrect"
+        android:hint="Type a message"
+        />
+
+    <Button
+        android:id="@+id/msg_send_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/error_pane"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:text="Send"
+        android:onClick="guiClickSend"
         />
 
 </RelativeLayout>
