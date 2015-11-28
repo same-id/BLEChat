@@ -339,7 +339,7 @@ public class BLEApplication extends Application {
                         mAdvertisementCallback = null;
                         refreshActivity();
                     }
-                }, 20000);
+                }, 10000);
             }
 
             @Override

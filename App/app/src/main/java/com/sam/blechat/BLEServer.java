@@ -114,14 +114,27 @@ public class BLEServer {
                 try {
                     String body = new String(responseBody);
                     JSONObject object = new JSONObject(body);
-                    JSONObject userObjJSON = object.getJSONObject("user");
-                    assert userObjJSON != null;
-                    JSONArray userJSON = userObjJSON.getJSONArray("data");
-                    assert userJSON != null;
-                    JSONObject msgObjJSON = object.getJSONObject("msg");
-                    assert msgObjJSON != null;
-                    JSONArray msgJSON = msgObjJSON.getJSONArray("data");
-                    assert msgJSON != null;
+                    JSONArray msgJSON;
+                    JSONArray userJSON;
+
+                    try {
+                        JSONObject userObjJSON = object.getJSONObject("user");
+                        assert userObjJSON != null;
+                        userJSON = userObjJSON.getJSONArray("data");
+                        assert userJSON != null;
+                    } catch (Exception e) {
+                        userJSON = object.getJSONArray("user");
+                        assert userJSON != null;
+                    }
+                    try {
+                        JSONObject msgObjJSON = object.getJSONObject("msg");
+                        assert msgObjJSON != null;
+                        msgJSON = msgObjJSON.getJSONArray("data");
+                        assert msgJSON != null;
+                    } catch (Exception e) {
+                        msgJSON = object.getJSONArray("msg");
+                        assert msgJSON != null;
+                    }
                     byte[] userBytes = new byte[userJSON.length()];
                     byte[] msgBytes = new byte[msgJSON.length()];
                     for (int i = 0; i < userJSON.length(); i++) {
