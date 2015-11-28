@@ -18,8 +18,7 @@ import cz.msebera.android.httpclient.Header;
 
 public class BLEServer {
 
-    //private static String SERVER_HOST = "www.blechat.com";
-    private static String SERVER_HOST = "10.0.0.7";
+    private static String SERVER_HOST = "nodejs-blechat.rhcloud.com";
 
     interface PutMessageCallback {
 
