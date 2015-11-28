@@ -16,23 +16,30 @@ app.put('/message/:msg_id', function (req, res) {
 
   var msg_id = req.params.msg_id;
   
+  if (!req.body.user) {
+    console.log("No user field")
+    res.sendStatus(500);
+    return;
+  }
   if (!req.body.msg) {
     console.log("No msg field")
     res.sendStatus(500);
     return;
   }
-  var msg = new Buffer(req.body.msg, 'base64');
 
-  console.log(msg)
+  var msg = new Buffer(req.body.msg, 'base64');
+  var user = new Buffer(req.body.user, 'base64');
+
+  //console.log(msg)
 
   if (messages[msg_id]) {
     res.sendStatus(500);
     return;
   }
 
-  messages[msg_id] = msg;
+  messages[msg_id] = {msg:msg, user:user};
 
-  console.log(messages);
+  //console.log(messages);
 
   res.sendStatus(200);
 });
@@ -47,7 +54,7 @@ app.get('/message/:msg_id', function (req, res) {
   }
 
   res.status(200);
-  res.send(messages[msg_id]);
+  res.json(messages[msg_id]);
 
 });
 

@@ -22,10 +22,6 @@ public class BLEActivity extends Activity {
     private static final String TAG = "BLEActivity";
     private static final int REQUEST_ENABLE_BT = 1;
 
-    /*
-    private BluetoothAdapter mBluetoothAdapter = null;
-    private BluetoothLeAdvertiser mBluetoothLeAdvertiser = null;
-    */
     private BLEApplication mApplication = null;
 
     @Override
@@ -37,34 +33,7 @@ public class BLEActivity extends Activity {
 
         mApplication = (BLEApplication) getApplication();
         mApplication.setChatScreenActivity(this);
-        //if (!mBluetoothAdapter.isMultipleAdvertisementSupported()) {
-        //    Log.e(TAG, "BLEActivity Advertisement not supported");
-        //    return;
-        //}
 
-        /*
-        mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
-        if (mBluetoothLeAdvertiser == null) {
-            Log.e(TAG, "Error getting BLEActivity Advertiser");
-            return;
-        }
-
-        AdvertiseSettings.Builder settingsBuilder = new AdvertiseSettings.Builder();
-        settingsBuilder.setConnectable(false);
-        AdvertiseSettings settings = settingsBuilder.build();
-
-        AdvertiseData.Builder dataBuilder = new AdvertiseData.Builder();
-        byte[] dataBytes = new byte[] {
-                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-        };
-        int mockManufacturerId = 0xF00D;
-        dataBuilder.addManufacturerData(mockManufacturerId, dataBytes);
-        AdvertiseData data = dataBuilder.build();
-
-        mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
-        */
         guiRefresh();
     }
 
@@ -88,12 +57,15 @@ public class BLEActivity extends Activity {
 
         guiHideEnableBLE();
         guiHideBLENotSupported();
+        guiHideNotScanning();
         guiHideInternetError();
 
         if (!mApplication.isBluetoothSupported()) {
             guiShowBLENotSupported();
         } else if (!mApplication.isBluetoothEnabled()) {
             guiShowEnableBLE();
+        } else if (!mApplication.isScanning()) {
+            guiShowNotScanning();
         }
 
         if (!mApplication.isNetworkAvailable()) {
@@ -117,20 +89,6 @@ public class BLEActivity extends Activity {
         }
 
     };*/
-
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
-                Log.d(TAG, "BLEActivity Discovery started");
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-                Log.d(TAG, "BLEActivity Discovery finished");
-            } else {
-                Log.d(TAG, String.format("Unknown intent %s", action));
-            }
-        }
-    };
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -199,9 +157,21 @@ public class BLEActivity extends Activity {
         errorPane.setVisibility(View.GONE);
     }
 
+    private void guiShowNotScanning() {
+        View errorPane = findViewById(R.id.ble_not_scanning_pane);
+        errorPane.setVisibility(View.VISIBLE);
+    }
+
+    private void guiHideNotScanning() {
+        View errorPane = findViewById(R.id.ble_not_scanning_pane);
+        errorPane.setVisibility(View.GONE);
+    }
+
     public void guiClickEnableBLE(View v) {
         requestEnableBLE();
     }
+
+    public void guiClickStartScanning(View v) { mApplication.startScanning(); }
 
     private void guiShowInternetError() {
         View errorPane = findViewById(R.id.internet_error_pane);

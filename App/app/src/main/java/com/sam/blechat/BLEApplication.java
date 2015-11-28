@@ -2,11 +2,21 @@ package com.sam.blechat;
 
 import android.app.Application;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -31,6 +41,7 @@ public class BLEApplication extends Application {
     private BLEServer mServer = null;
     private BluetoothAdapter mBluetoothAdapter = null;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser = null;
+    private BluetoothLeScanner mBluetoothScanner = null;
     private AdvertiseCallback mAdvertisementCallback = null;
     private Timer mTimer = null;
 
@@ -39,6 +50,8 @@ public class BLEApplication extends Application {
 
     private BLEMessage mCurrentlySentMessage = null;
 
+    private boolean mIsCurrentlyDiscovering = false;
+
     public BLEApplication() {
         super();
 
@@ -46,22 +59,123 @@ public class BLEApplication extends Application {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter != null) {
             mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
+            mBluetoothScanner = mBluetoothAdapter.getBluetoothLeScanner();
         }
+        startLEScanning();
 
         mTimer = new Timer();
-
-        mTimer.scheduleAtFixedRate(mScanWatchdogTask, 0, 10000);
     }
 
-    private TimerTask mScanWatchdogTask = new TimerTask() {
-        @Override
-        public void run() {
+    private void startLEScanning() {
+        if (isBluetoothEnabled() && mBluetoothScanner != null) {
+            Log.d(TAG, "Starting scan");
 
+            mIsCurrentlyDiscovering = true;
+            try {
+                ScanSettings.Builder settingsBuilder = new ScanSettings.Builder();
+                ScanSettings settings = settingsBuilder
+                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                        .build();
+                mBluetoothScanner.startScan(null, settings, mScanCallback);
+            } catch (Exception e) {
+                Log.d(TAG, "Failed starting scan", e);
+                mIsCurrentlyDiscovering = false;
+            }
+        }
+    }
+
+    private ScanCallback mScanCallback = new ScanCallback() {
+        @Override
+        public void onScanFailed(int errorCode) {
+            super.onScanFailed(errorCode);
+            mIsCurrentlyDiscovering = false;
+            Log.d(TAG, "Failed starting scan: " + errorCode);
+        }
+
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            super.onScanResult(callbackType, result);
+            ScanRecord scanRecord = result.getScanRecord();
+            if (scanRecord == null) {
+                return;
+            }
+            byte[] data = scanRecord.getManufacturerSpecificData(0xF00D);
+            if (data == null) {
+                return;
+            }
+            BluetoothDevice device = result.getDevice();
+            if (device == null) {
+                return;
+            }
+            String id = bytesToId(data);
+            if (id == null) {
+                Log.d(TAG, "Couldn't extract id from data");
+            }
+
+            for (BLEMessage msg : mMessages) {
+                if (msg.getId().equals(id)) {
+                    Log.d(TAG, "Already found message " + id);
+                    return;
+                }
+            }
+
+            Log.d(TAG, "Found message " + id);
+
+            String mac = device.getAddress();
+            String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US).format(new Date());
+
+            BLEMessage msg = new BLEMessage(mac, id, "Unknown", date, "fetching message...", false);
+            msg.setState(BLEMessageState.DOWNLOADING);
+
+            mServer.getMessage(msg, new BLEServer.GetMessageCallback() {
+                @Override
+                public void getMessageSuccess(BLEMessage msg) {
+                    msg.setState(BLEMessageState.SUCCESS);
+
+                    refreshActivity();
+                }
+
+                @Override
+                public void getMessageError(BLEMessage msg, Throwable error) {
+                    Log.e(TAG, error.getMessage());
+
+                    msg.setState(BLEMessageState.FAILURE);
+
+                    refreshActivity();
+                }
+            });
+
+            mMessages.add(msg);
+
+            refreshActivity();
+        }
+    };
+
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
+                        BluetoothAdapter.ERROR);
+                switch (state) {
+                    case BluetoothAdapter.STATE_OFF:
+                        mIsCurrentlyDiscovering = false;
+                        refreshActivity();
+                        break;
+                    case BluetoothAdapter.STATE_ON:
+                        startScanning();
+                        break;
+                }
+                refreshActivity();
+            }
         }
     };
 
     public void setChatScreenActivity(BLEActivity activity) {
         mChatScreenActivity = new WeakReference<>(activity);
+        Log.d(TAG, "Registering receiver");
+        registerReceiver(mReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
     }
 
     private void refreshActivity() {
@@ -123,7 +237,7 @@ public class BLEApplication extends Application {
 
                     transmitMessage();
                 } catch(Exception e) {
-                    Log.e(TAG, "failure transmitting message", e);
+                    Log.e(TAG, "Failure transmitting message", e);
                     msg.setState(BLEMessageState.FAILURE);
                     mCurrentlySentMessage = null;
                 }
@@ -167,8 +281,13 @@ public class BLEApplication extends Application {
         return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
     }
 
-    public boolean isBluetoothTransmittionOn() {
-        return true;
+    public void startScanning() {
+        startLEScanning();
+        refreshActivity();
+    }
+
+    public boolean isScanning() {
+        return mIsCurrentlyDiscovering;
     }
 
     public boolean isNetworkAvailable() {
@@ -177,10 +296,6 @@ public class BLEApplication extends Application {
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
-
-    /*
-
-    */
 
     private void transmitMessage(){
         if (mBluetoothLeAdvertiser == null) {
@@ -248,17 +363,15 @@ public class BLEApplication extends Application {
         return bb.array();
     }
 
-    public void startDiscovery() {
-
-
+    private String bytesToId(byte[] bytes) {
+        try {
+            ByteBuffer bb = ByteBuffer.wrap(bytes);
+            long high = bb.getLong();
+            long low = bb.getLong();
+            UUID uuid = new UUID(high, low);
+            return uuid.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
-
-    public void stopDiscovery() {
-
-    }
-
-    public void startAdvertising() {
-
-    }
-
 }

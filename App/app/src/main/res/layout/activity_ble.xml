@@ -38,6 +38,18 @@
             android:layout_marginBottom="2dp"
             />
         <TextView
+            android:id="@+id/ble_not_scanning_pane"
+            android:text="Not scanning - click to start"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FF8080"
+            android:onClick="guiClickStartScanning"
+            android:visibility="gone"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            />
+        <TextView
             android:id="@+id/internet_error_pane"
             android:text="No Internet connection"
             android:gravity="center"

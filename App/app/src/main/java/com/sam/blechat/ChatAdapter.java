@@ -78,6 +78,8 @@ public class ChatAdapter extends BaseAdapter {
             holder.stateImage.setImageResource(R.drawable.msg_upload);
         } else if (msgState == BLEMessageState.TRANSMITTING) {
             holder.stateImage.setImageResource(R.drawable.msg_transmitting);
+        } else if (msgState == BLEMessageState.DOWNLOADING) {
+            holder.stateImage.setImageResource(R.drawable.msg_download);
         } else if (msgState == BLEMessageState.SUCCESS) {
             holder.stateImage.setImageResource(R.drawable.msg_delivered);
         } else if (msgState == BLEMessageState.FAILURE) {

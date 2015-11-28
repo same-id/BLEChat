@@ -8,7 +8,9 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
-import java.io.ByteArrayInputStream;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 
@@ -17,7 +19,7 @@ import cz.msebera.android.httpclient.Header;
 public class BLEServer {
 
     //private static String SERVER_HOST = "www.blechat.com";
-    private static String SERVER_HOST = "10.0.0.3";
+    private static String SERVER_HOST = "10.0.0.7";
 
     interface PutMessageCallback {
 
@@ -27,11 +29,11 @@ public class BLEServer {
 
     }
 
-    interface getMessageCallback {
+    interface GetMessageCallback {
 
-        void getMessageSuccess(String message);
+        void getMessageSuccess(BLEMessage msg);
 
-        void getMessageError(Exception error);
+        void getMessageError(BLEMessage msg, Throwable error);
 
     }
 
@@ -64,17 +66,21 @@ public class BLEServer {
 
         RequestParams params = new RequestParams();
         params.setForceMultipartEntityContentType(true);
+        params.put("user",
+                Base64.encodeToString(message.getUser().getBytes(StandardCharsets.UTF_8), 0));
+
         params.put("msg",
                 Base64.encodeToString(message.getText().getBytes(StandardCharsets.UTF_8), 0));
 
         AsyncHttpClient client = new AsyncHttpClient();
-        client.setMaxRetriesAndTimeout(1, 10000);
+        client.setMaxRetriesAndTimeout(0, 10000);
         client.put(mApplication, url, params, new AsyncHttpResponseHandler() {
 
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
                 if (statusCode != HttpURLConnection.HTTP_OK) {
                     callback.putMessageError(message, new Exception("Bad status"));
+                    return;
                 }
                 callback.putMessageSuccess(message);
             }
@@ -86,8 +92,63 @@ public class BLEServer {
         });
     }
 
-    public void getMessage(String identifier) {
-        // asd;
+    public void getMessage(final BLEMessage message,
+                           final GetMessageCallback callback) {
+        String url = new Uri.Builder()
+                .scheme("http")
+                .authority(SERVER_HOST)
+                .appendPath("message")
+                .appendPath(message.getId())
+                .build().toString();
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.setMaxRetriesAndTimeout(0, 10000);
+        client.get(mApplication, url, new AsyncHttpResponseHandler() {
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                if (statusCode != HttpURLConnection.HTTP_OK) {
+                    callback.getMessageError(message, new Exception("Bad status"));
+                    return;
+                }
+
+                try {
+                    String body = new String(responseBody);
+                    JSONObject object = new JSONObject(body);
+                    JSONObject userObjJSON = object.getJSONObject("user");
+                    assert userObjJSON != null;
+                    JSONArray userJSON = userObjJSON.getJSONArray("data");
+                    assert userJSON != null;
+                    JSONObject msgObjJSON = object.getJSONObject("msg");
+                    assert msgObjJSON != null;
+                    JSONArray msgJSON = msgObjJSON.getJSONArray("data");
+                    assert msgJSON != null;
+                    byte[] userBytes = new byte[userJSON.length()];
+                    byte[] msgBytes = new byte[msgJSON.length()];
+                    for (int i = 0; i < userJSON.length(); i++) {
+                        userBytes[i] = (byte)userJSON.getInt(i);
+                    }
+                    for (int i = 0; i < msgJSON.length(); i++) {
+                        msgBytes[i] = (byte)msgJSON.getInt(i);
+                    }
+
+                    String user = new String(userBytes, "UTF-8");
+                    String msg = new String(msgBytes, "UTF-8");
+
+                    message.setUser(user);
+                    message.setText(msg);
+
+                    callback.getMessageSuccess(message);
+                } catch (Exception e) {
+                    callback.getMessageError(message, e);
+                }
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                callback.getMessageError(message, error);
+            }
+        });
     }
 
 }

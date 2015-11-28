@@ -23,8 +23,10 @@ public class BLEMessage {
 
     public String getId() {return mId; }
 
+    public void setUser(String user) { mUser = user; }
     public String getUser() { return mUser; }
 
+    public void setText(String text) { mText = text; }
     public String getText() { return mText; }
 
     public String getMAC() {
