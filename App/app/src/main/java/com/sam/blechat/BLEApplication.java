@@ -9,7 +9,6 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
@@ -50,7 +49,7 @@ public class BLEApplication extends Application {
 
     private BLEMessage mCurrentlySentMessage = null;
 
-    private boolean mIsCurrentlyDiscovering = false;
+    private boolean mIsCurrentlyScanning = false;
 
     public BLEApplication() {
         super();
@@ -70,7 +69,7 @@ public class BLEApplication extends Application {
         if (isBluetoothEnabled() && mBluetoothScanner != null) {
             Log.d(TAG, "Starting scan");
 
-            mIsCurrentlyDiscovering = true;
+            mIsCurrentlyScanning = true;
             try {
                 ScanSettings.Builder settingsBuilder = new ScanSettings.Builder();
                 ScanSettings settings = settingsBuilder
@@ -79,7 +78,7 @@ public class BLEApplication extends Application {
                 mBluetoothScanner.startScan(null, settings, mScanCallback);
             } catch (Exception e) {
                 Log.d(TAG, "Failed starting scan", e);
-                mIsCurrentlyDiscovering = false;
+                mIsCurrentlyScanning = false;
             }
         }
     }
@@ -88,7 +87,7 @@ public class BLEApplication extends Application {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
-            mIsCurrentlyDiscovering = false;
+            mIsCurrentlyScanning = false;
             Log.d(TAG, "Failed starting scan: " + errorCode);
         }
 
@@ -160,10 +159,16 @@ public class BLEApplication extends Application {
                         BluetoothAdapter.ERROR);
                 switch (state) {
                     case BluetoothAdapter.STATE_OFF:
-                        mIsCurrentlyDiscovering = false;
+                        Log.d(TAG, "Bluetooth OFF");
+                        mIsCurrentlyScanning = false;
                         refreshActivity();
                         break;
                     case BluetoothAdapter.STATE_ON:
+                        Log.d(TAG, "Bluetooth ON");
+                        if (mBluetoothAdapter != null) {
+                            mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
+                            mBluetoothScanner = mBluetoothAdapter.getBluetoothLeScanner();
+                        }
                         startScanning();
                         break;
                 }
@@ -287,7 +292,7 @@ public class BLEApplication extends Application {
     }
 
     public boolean isScanning() {
-        return mIsCurrentlyDiscovering;
+        return mIsCurrentlyScanning;
     }
 
     public boolean isNetworkAvailable() {
@@ -308,6 +313,7 @@ public class BLEApplication extends Application {
 
         AdvertiseSettings.Builder settingsBuilder = new AdvertiseSettings.Builder();
         settingsBuilder.setConnectable(false);
+        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY);
         AdvertiseSettings settings = settingsBuilder.build();
 
         AdvertiseData.Builder dataBuilder = new AdvertiseData.Builder();
