@@ -124,31 +124,37 @@ public class BLEApplication extends Application {
             String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.US).format(new Date());
 
             BLEMessage msg = new BLEMessage(mac, id, "Unknown", date, "fetching message...", false);
-            msg.setState(BLEMessageState.DOWNLOADING);
 
-            mServer.getMessage(msg, new BLEServer.GetMessageCallback() {
-                @Override
-                public void getMessageSuccess(BLEMessage msg) {
-                    msg.setState(BLEMessageState.SUCCESS);
-
-                    refreshActivity();
-                }
-
-                @Override
-                public void getMessageError(BLEMessage msg, Throwable error) {
-                    Log.e(TAG, error.getMessage());
-
-                    msg.setState(BLEMessageState.FAILURE);
-
-                    refreshActivity();
-                }
-            });
+            downloadMessage(msg);
 
             mMessages.add(msg);
 
             refreshActivity();
         }
     };
+
+    public void downloadMessage(BLEMessage msg) {
+        msg.setState(BLEMessageState.DOWNLOADING);
+
+        mServer.getMessage(msg, new BLEServer.GetMessageCallback() {
+            @Override
+            public void getMessageSuccess(BLEMessage msg) {
+                msg.setState(BLEMessageState.SUCCESS);
+
+                refreshActivity();
+            }
+
+            @Override
+            public void getMessageError(BLEMessage msg, Throwable error) {
+                Log.e(TAG, error.getMessage());
+
+                msg.setState(BLEMessageState.FAILURE);
+                msg.setFailureReason(BLEMessageFailureReason.DOWNLOAD_ERROR);
+
+                refreshActivity();
+            }
+        });
+    }
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -312,9 +318,11 @@ public class BLEApplication extends Application {
         assert mAdvertisementCallback == null;
 
         AdvertiseSettings.Builder settingsBuilder = new AdvertiseSettings.Builder();
-        settingsBuilder.setConnectable(false);
-        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY);
-        AdvertiseSettings settings = settingsBuilder.build();
+        AdvertiseSettings settings = settingsBuilder
+                .setConnectable(false)
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+                .build();
 
         AdvertiseData.Builder dataBuilder = new AdvertiseData.Builder();
 

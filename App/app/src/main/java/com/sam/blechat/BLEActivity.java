@@ -199,4 +199,8 @@ public class BLEActivity extends Activity {
         guiRefresh();
     }
 
+    public void reDownloadMessage(BLEMessage msg) {
+        mApplication.downloadMessage(msg);
+    }
+
 }

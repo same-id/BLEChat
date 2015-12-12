@@ -9,6 +9,7 @@ public class BLEMessage {
     private String mDate;
     private boolean mIsSelf;
     private BLEMessageState mState;
+    private BLEMessageFailureReason mFailureReason;
 
     public BLEMessage(String mac, String id, String user,
                       String date, String text, boolean isSelf) {
@@ -19,6 +20,7 @@ public class BLEMessage {
         mIsSelf = isSelf;
         mText = text;
         mState = BLEMessageState.CREATED;
+        mFailureReason = BLEMessageFailureReason.NONE;
     }
 
     public String getId() {return mId; }
@@ -37,7 +39,13 @@ public class BLEMessage {
 
     public String getDate() { return mDate; }
 
-    public void setState(BLEMessageState state) { mState = state; }
+    public void setState(BLEMessageState state) {
+        mState = state;
+        mFailureReason = BLEMessageFailureReason.NONE;
+    }
     public BLEMessageState getState() { return mState; }
+
+    public void setFailureReason(BLEMessageFailureReason reason) { mFailureReason = reason; }
+    public BLEMessageFailureReason getFailureReason() { return mFailureReason; }
 
 }
